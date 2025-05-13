@@ -45,9 +45,9 @@ document.addEventListener('DOMContentLoaded', () => {
         // Ensure elements exist before manipulating them
         if (passwordScreen && appContent) {
             passwordScreen.style.display = 'none';
-            appContent.style.display = 'block'; // Use style directly
+            appContent.style.display = 'block'; 
             sessionStorage.setItem(sessionKey, 'true');
-            // Initialize the rest of the app only AFTER authentication
+            document.title = "Cutus' Canvas"; // Update tab title
             initializeAppLogic(); 
         } else {
             console.error('Password screen or app content element not found!');
