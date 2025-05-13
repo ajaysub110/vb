@@ -8,61 +8,74 @@
     <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet"> <!-- Playful font -->
 </head>
 <body>
-    <header>
-        <!-- Header Icons -->
-        <img src="assets/space-needle.jpeg" alt="Space Needle" class="header-icon icon-1">
-        <img src="assets/ramen.jpeg" alt="Ramen Bowl" class="header-icon icon-2">
-        <img src="assets/tulips.jpeg" alt="Tulips" class="header-icon icon-3">
-        <img src="assets/us.jpeg" alt="Us" class="header-icon icon-4"> 
-        
-        <h1>Cutus' Canvas</h1>
-        
-        <img src="assets/plane.jpeg" alt="Airplane" class="header-icon icon-5">
-        <img src="assets/ski.jpeg" alt="Skier" class="header-icon icon-6">
-        <img src="assets/rain.jpeg" alt="Rain Cloud" class="header-icon icon-7">
-        <img src="assets/rainier.jpeg" alt="Mount Rainier" class="header-icon icon-8">
-    </header>
-
-    <div class="user-toggle">
-        <span>Which one are you?</span>
-        <button id="userBigBtn" class="user-btn active" data-user="big">Big</button>
-        <button id="userLilBtn" class="user-btn" data-user="lil">Lil</button> 
-    </div>
-
-    <main id="board">
-        <!-- Vision board items will be added here -->
-        <div class="board-item">
-            <h2>Example Item</h2>
-            <img src="https://via.placeholder.com/150" alt="Example Image">
-            <p>This is an example description.</p>
-            <a href="#" target="_blank">Link</a>
-        </div>
-    </main>
-
-    <button id="addButton" class="fab">+</button>
-
-    <div id="addItemModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Add New Item</h2>
-            <form id="addItemForm">
-                <label for="itemName">Name:</label>
-                <input type="text" id="itemName" name="itemName" required>
-
-                <label for="itemLink">Link (Optional):</label>
-                <input type="url" id="itemLink" name="itemLink">
-
-                <label for="itemImage">Image URL (Optional):</label>
-                <input type="url" id="itemImage" name="itemImage">
-
-                <label for="itemDescription">Description (Optional):</label>
-                <textarea id="itemDescription" name="itemDescription"></textarea>
-
-                <button type="submit">Add Item</button>
+    <div id="passwordScreen" class="password-screen">
+        <div class="password-content">
+            <h2>Enter Password</h2>
+            <form id="passwordForm">
+                <input type="password" id="passwordInput" placeholder="Password" required>
+                <button type="submit">Unlock</button>
             </form>
+            <p id="passwordError" class="password-error"></p>
         </div>
     </div>
 
-    <script src="script.js"></script>
+    <div id="appContent" style="display: none;"> <!-- Wrap existing content -->
+        <header>
+            <!-- Header Icons -->
+            <img src="assets/space-needle.jpeg" alt="Space Needle" class="header-icon icon-1">
+            <img src="assets/ramen.jpeg" alt="Ramen Bowl" class="header-icon icon-2">
+            <img src="assets/tulips.jpeg" alt="Tulips" class="header-icon icon-3">
+            <img src="assets/us.jpeg" alt="Us" class="header-icon icon-4"> 
+            
+            <h1>Cutus' Canvas</h1>
+            
+            <img src="assets/plane.jpeg" alt="Airplane" class="header-icon icon-5">
+            <img src="assets/ski.jpeg" alt="Skier" class="header-icon icon-6">
+            <img src="assets/rain.jpeg" alt="Rain Cloud" class="header-icon icon-7">
+            <img src="assets/rainier.jpeg" alt="Mount Rainier" class="header-icon icon-8">
+        </header>
+
+        <div class="user-toggle">
+            <span>Which one are you?</span>
+            <button id="userBigBtn" class="user-btn active" data-user="big">Big</button>
+            <button id="userLilBtn" class="user-btn" data-user="lil">Lil</button> 
+        </div>
+
+        <main id="board">
+            <!-- Vision board items will be added here -->
+            <div class="board-item">
+                <h2>Example Item</h2>
+                <img src="https://via.placeholder.com/150" alt="Example Image">
+                <p>This is an example description.</p>
+                <a href="#" target="_blank">Link</a>
+            </div>
+        </main>
+
+        <button id="addButton" class="fab">+</button>
+
+        <div id="addItemModal" class="modal">
+            <div class="modal-content">
+                <span class="close-button">&times;</span>
+                <h2>Add New Item</h2>
+                <form id="addItemForm">
+                    <label for="itemName">Name:</label>
+                    <input type="text" id="itemName" name="itemName" required>
+
+                    <label for="itemLink">Link (Optional):</label>
+                    <input type="url" id="itemLink" name="itemLink">
+
+                    <label for="itemImage">Image URL (Optional):</label>
+                    <input type="url" id="itemImage" name="itemImage">
+
+                    <label for="itemDescription">Description (Optional):</label>
+                    <textarea id="itemDescription" name="itemDescription"></textarea>
+
+                    <button type="submit">Add Item</button>
+                </form>
+            </div>
+        </div>
+
+        <script src="script.js"></script>
+    </div> <!-- Close appContent wrapper -->
 </body>
 </html> 
