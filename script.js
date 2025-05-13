@@ -4,9 +4,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const closeButton = document.querySelector('.close-button');
     const addItemForm = document.getElementById('addItemForm');
     const board = document.getElementById('board');
+    const userBigBtn = document.getElementById('userBigBtn');
+    const userLilBtn = document.getElementById('userLilBtn');
 
     const STORAGE_KEY = 'visionBoardItems';
     let editingItemId = null; // Track the ID of the item being edited
+    let currentAdder = 'big'; // Default adder updated
+
+    // --- User Toggle Logic ---
+    function setActiveUser(selectedUser) {
+        currentAdder = selectedUser;
+        if (selectedUser === 'big') {
+            userBigBtn.classList.add('active');
+            userLilBtn.classList.remove('active');
+        } else {
+            userLilBtn.classList.add('active');
+            userBigBtn.classList.remove('active');
+        }
+        console.log('Current adder set to:', currentAdder);
+    }
+
+    userBigBtn.addEventListener('click', () => setActiveUser('big'));
+    userLilBtn.addEventListener('click', () => setActiveUser('lil'));
+    // ------------------------
 
     // --- Local Storage Functions ---
     function getItemsFromStorage() {
@@ -75,7 +95,8 @@ document.addEventListener('DOMContentLoaded', () => {
             link: document.getElementById('itemLink').value,
             imageUrl: document.getElementById('itemImage').value,
             description: document.getElementById('itemDescription').value,
-            id: editingItemId || Date.now().toString() // Use existing ID if editing
+            id: editingItemId || Date.now().toString(),
+            adder: editingItemId ? null : currentAdder // Store adder only when adding new, retain original on edit
         };
 
         if (!itemData.name) {
@@ -89,9 +110,11 @@ document.addEventListener('DOMContentLoaded', () => {
             // --- Update existing item ---
             const itemIndex = currentItems.findIndex(item => item.id === editingItemId);
             if (itemIndex > -1) {
+                // Preserve the original adder when editing
+                const originalAdder = currentItems[itemIndex].adder;
+                itemData.adder = originalAdder; // Ensure we keep the original adder
                 currentItems[itemIndex] = itemData;
                 saveItemsToStorage(currentItems);
-                // Update the item directly in the DOM
                 updateItemInBoard(itemData);
             } else {
                 console.error('Item to edit not found in storage');
@@ -99,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
             // -------------------------
         } else {
             // --- Add new item ---
-            addItemToBoard(itemData.name, itemData.link, itemData.imageUrl, itemData.description, itemData.id);
+            addItemToBoard(itemData.name, itemData.link, itemData.imageUrl, itemData.description, itemData.id, itemData.adder);
             currentItems.push(itemData);
             saveItemsToStorage(currentItems);
              // ---------------------
@@ -186,12 +209,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // -----------------------------
 
     // --- Function to Create/Add Item Element to Board ---
-    function addItemToBoard(name, link, imageUrl, description, id) {
+    function addItemToBoard(name, link, imageUrl, description, id, adder) {
         const itemDiv = document.createElement('div');
         itemDiv.classList.add('board-item');
         itemDiv.dataset.id = id; 
 
-        // --- Add Action Buttons Container ---
+        // --- Add Adder Icon (Top-Left) ---
+        if (adder) {
+            const iconImg = document.createElement('img');
+            iconImg.classList.add('adder-icon');
+            iconImg.src = adder === 'big' ? 'assets/donkey.png' : 'assets/lion.png';
+            iconImg.alt = adder === 'big' ? "Big's item" : "Lil's item";
+            itemDiv.appendChild(iconImg);
+        }
+        // ----------------------------------
+
+        // --- Add Action Buttons Container (Top-Right) ---
         const actionBtnsContainer = document.createElement('div');
         actionBtnsContainer.classList.add('item-actions');
 
@@ -262,7 +295,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const itemDiv = board.querySelector(`.board-item[data-id="${itemData.id}"]`);
         if (!itemDiv) return;
 
-        // Find the content container within the itemDiv
+        // Note: We don't need to update the adder class here as it shouldn't change on edit.
+
         const contentContainer = itemDiv.querySelector('.item-content');
         if (!contentContainer) return; // Should exist based on addItemToBoard
 
@@ -321,12 +355,30 @@ document.addEventListener('DOMContentLoaded', () => {
             return false;
         });
 
-        // Step 2: Ensure all valid items have an ID
+        // Step 2: Ensure all valid items have an ID and potentially a default adder
         const migratedItems = validItems.map((item, index) => {
+            // Assign ID if missing
             if (typeof item === 'object' && item !== null && (!item.id || String(item.id).trim() === '')) {
-                item.id = 'migrated-' + Date.now().toString() + '-' + index; // Added prefix
+                item.id = 'migrated-' + Date.now().toString() + '-' + index; 
                 needsSave = true; 
                 console.log(`[Migration] Assigned ID ${item.id} to item:`, item.name);
+            }
+            // Assign default adder if missing (for older items)
+            if (typeof item === 'object' && item !== null && !item.adder) {
+                item.adder = 'big'; // Default older items to 'big'
+                needsSave = true;
+                console.log(`[Migration] Assigned default adder 'big' to item:`, item.name);
+            }
+            // Migration for old adder values
+            if (typeof item === 'object' && item !== null && item.adder === 'ajay') {
+                item.adder = 'big';
+                needsSave = true;
+                console.log(`[Migration] Changed adder from 'ajay' to 'big' for item:`, item.name);
+            }
+            if (typeof item === 'object' && item !== null && item.adder === 'gf') {
+                item.adder = 'lil';
+                needsSave = true;
+                console.log(`[Migration] Changed adder from 'gf' to 'lil' for item:`, item.name);
             }
             return item;
         });
@@ -346,13 +398,14 @@ document.addEventListener('DOMContentLoaded', () => {
             board.innerHTML = '<p id="board-placeholder" style="text-align: center; width: 100%; grid-column: 1 / -1; color: #777;">Your vision board is empty. Click the + button to add items!</p>';
         } else {
             items.forEach(item => {
-                if (item && typeof item === 'object' && item.name) { // Extra check before displaying
+                if (item && typeof item === 'object' && item.name && item.id) { // Added check for item.id
                     addItemToBoard(
                         item.name,
                         item.link || '',
                         item.imageUrl || '',
                         item.description || '',
-                        item.id // This ID should now be reliable
+                        item.id,
+                        item.adder // Pass the adder
                     );
                 } else {
                     console.warn('[Display] Skipping invalid item structure:', item);

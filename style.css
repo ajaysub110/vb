@@ -1,8 +1,10 @@
+@import url('https://fonts.googleapis.com/css2?family=Pacifico&family=Quicksand:wght@400;500;700&display=swap');
+
 body {
-    font-family: sans-serif;
+    font-family: 'Quicksand', sans-serif; /* Default font to Quicksand now */
     margin: 0;
-    background-color: #f4f4f4;
-    color: #333;
+    background-color: #6ab04c; /* Same green as header */
+    color: #333; /* Default text color - may need adjustment on green */
 }
 
 header {
@@ -36,6 +38,38 @@ header h1 {
     opacity: 0.9;
 }
 
+/* User Toggle Buttons */
+.user-toggle {
+    text-align: center;
+    margin: 15px 0;
+}
+
+.user-toggle span {
+    margin-right: 10px;
+    color: #555;
+}
+
+.user-btn {
+    padding: 8px 15px;
+    border: 1px solid #ccc;
+    background-color: #f0f0f0;
+    color: #333;
+    cursor: pointer;
+    border-radius: 4px;
+    margin-left: 5px;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+.user-btn.active {
+    background-color: #4d8c3a; /* Darker green for active button */
+    color: white;
+    border-color: #3e702e; /* Even darker border for definition */
+}
+
+.user-btn:not(.active):hover {
+    background-color: #e0e0e0;
+}
+
 /* Positioning for 8 icons */
 /* Left side */
 .icon-1 { left: 1%; }
@@ -59,16 +93,16 @@ header h1 {
 }
 
 .board-item {
-    background-color: white;
+    background-color: white; 
     border-radius: 8px;
-    padding: 15px;
+    padding: 15px; /* Reset padding, remove large top padding */
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
-    align-items: center; /* Center item content */
+    align-items: center; 
     text-align: center;
     position: relative; 
-    padding-top: 35px; /* Add padding to top to make space for action buttons */
+    transition: background-color 0.3s ease; 
 }
 
 .board-item img {
@@ -81,7 +115,10 @@ header h1 {
 .board-item h2 {
     margin-top: 0;
     margin-bottom: 10px;
-    font-size: 1.2em;
+    font-size: 1.3em; /* Slightly larger */
+    font-family: 'Quicksand', cursive; /* Playful but readable */
+    font-weight: 700; /* Bolder */
+    /* Color is handled by adder-specific rules or defaults */
 }
 
 .board-item p {
@@ -145,9 +182,23 @@ header h1 {
     color: white;
 }
 
+/* Style for the adder icon */
+.adder-icon {
+    position: absolute;
+    top: 10px;  
+    left: 10px; 
+    width: 72px; 
+    height: 72px; 
+    border-radius: 50%; 
+    object-fit: cover; 
+    z-index: 2; 
+}
+
 /* Container for the actual item content */
 .item-content {
-    /* Takes up the remaining space */
+    padding: 10px 40px 10px 85px; /* Re-add general padding: T R B L. Left padding accounts for icon width + buffer. Right padding accounts for actions. */
+    width: 100%; /* Ensure content takes full width for padding calculations */
+    box-sizing: border-box; /* Include padding in width calculation */
 }
 
 .fab {
@@ -254,4 +305,56 @@ header h1 {
 /* Class to display the modal */
 .modal.display {
     display: flex;
+}
+
+/* Default board item text color (if no adder class) needs contrast with green body */
+.board-item:not(.item-adder-big):not(.item-adder-lil) {
+    background-color: white;
+    color: #333;
+}
+
+.board-item:not(.item-adder-big):not(.item-adder-lil) a {
+    color: #007bff; /* Standard blue link for default white cards */
+}
+
+.board-item:not(.item-adder-big):not(.item-adder-lil) .edit-item-btn,
+.board-item:not(.item-adder-big):not(.item-adder-lil) .delete-item-btn {
+    background: rgba(0, 0, 0, 0.1); 
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.board-item:not(.item-adder-big):not(.item-adder-lil) .delete-item-btn:hover {
+    background: rgba(255, 0, 0, 0.7); 
+    color: white;
+}
+
+.board-item:not(.item-adder-big):not(.item-adder-lil) .edit-item-btn:hover {
+    background: rgba(0, 100, 255, 0.7); 
+    color: white;
+}
+
+/* Ensure links and action buttons are visible on colored backgrounds */
+.item-adder-big a,
+.item-adder-lil a {
+    color: #0056b3; /* Darker blue link */
+}
+
+.item-adder-big .edit-item-btn,
+.item-adder-big .delete-item-btn,
+.item-adder-lil .edit-item-btn,
+.item-adder-lil .delete-item-btn {
+    background: rgba(0, 0, 0, 0.1); /* Back to darker buttons for light background */
+    color: rgba(0, 0, 0, 0.6);
+}
+
+.item-adder-big .delete-item-btn:hover,
+.item-adder-lil .delete-item-btn:hover {
+    background: rgba(255, 0, 0, 0.7); /* Standard red */
+    color: white;
+}
+
+.item-adder-big .edit-item-btn:hover,
+.item-adder-lil .edit-item-btn:hover {
+    background: rgba(0, 100, 255, 0.7); /* Standard blue */
+    color: white;
 } 
