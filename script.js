@@ -89,6 +89,27 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Initialize App Logic (Run only after password success) ---
     function initializeAppLogic() {
         console.log('Initializing app logic...');
+
+        // --- START Firebase Setup ---
+        // TODO: Replace with your actual Firebase project configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyDMMbL4iXRioL2iKEpGf1WcZoLClLyMTvw",
+            authDomain: "visionboard-6ccfb.firebaseapp.com",
+            projectId: "visionboard-6ccfb",
+            storageBucket: "visionboard-6ccfb.firebasestorage.app",
+            messagingSenderId: "700195149017",
+            appId: "1:700195149017:web:185af64436f8315a911ac8",
+            measurementId: "G-HZTLYPH18Z"
+          };
+
+        // Initialize Firebase
+        if (!firebase.apps.length) {
+            firebase.initializeApp(firebaseConfig);
+        }
+        const database = firebase.database();
+        const itemsRef = database.ref('visionBoardItems');
+        // --- END Firebase Setup ---
+
         // All the previous code from DOMContentLoaded goes here
         const addButton = document.getElementById('addButton');
         const modal = document.getElementById('addItemModal');
@@ -125,13 +146,15 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- End User Toggle Logic ---
 
         // --- Local Storage Functions ---
+        // These are being replaced by Firebase functions
+        /*
         function getItemsFromStorage() {
             const itemsJson = localStorage.getItem(STORAGE_KEY);
             try {
                 return itemsJson ? JSON.parse(itemsJson) : [];
             } catch (e) {
                 console.error('Error parsing items from localStorage', e);
-                return []; 
+                return [];
             }
         }
 
@@ -142,7 +165,26 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error saving items to localStorage', e);
             }
         }
+        */
         // --- End Local Storage Functions ---
+
+        // --- Firebase Functions ---
+        function saveItemToFirebase(itemData) {
+            if (itemData.id) {
+                itemsRef.child(itemData.id).set(itemData)
+                    .then(() => console.log("Item saved to Firebase:", itemData))
+                    .catch(error => console.error("Error saving item to Firebase:", error));
+            } else {
+                console.error("Cannot save item without an ID", itemData);
+            }
+        }
+
+        function deleteItemFromFirebase(itemId) {
+            itemsRef.child(itemId).remove()
+                .then(() => console.log("Item deleted from Firebase, ID:", itemId))
+                .catch(error => console.error("Error deleting item from Firebase:", error));
+        }
+        // --- End Firebase Functions ---
 
         // --- Modal Handling --- 
         function openModalForAdd() {
@@ -203,26 +245,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
-                let currentItems = getItemsFromStorage();
+                // let currentItems = getItemsFromStorage(); // Replaced by Firebase
 
                 if (editingItemId) {
-                    const itemIndex = currentItems.findIndex(item => item.id === editingItemId);
-                    if (itemIndex > -1) {
-                        const originalAdder = currentItems[itemIndex].adder;
-                        itemData.adder = originalAdder; 
-                        currentItems[itemIndex] = itemData;
-                        saveItemsToStorage(currentItems);
-                        updateItemInBoard(itemData); 
-                    } else {
-                        console.error('Item to edit not found in storage');
-                    }
+                    // Logic for editing needs to be adapted for Firebase
+                    // For now, we assume editing will update the item in Firebase
+                    // We need to fetch the item first to preserve its original adder if not passed
+                    itemsRef.child(editingItemId).once('value', (snapshot) => {
+                        const existingItem = snapshot.val();
+                        if (existingItem) {
+                            itemData.adder = existingItem.adder; // Preserve original adder
+                            saveItemToFirebase(itemData);
+                            // updateItemInBoard(itemData); // UI update will be handled by Firebase listener
+                        } else {
+                            console.error('Item to edit not found in Firebase');
+                        }
+                    });
                 } else {
-                    addItemToBoard(itemData.name, itemData.link, itemData.imageUrl, itemData.description, itemData.id, itemData.adder);
-                    currentItems.push(itemData);
-                    saveItemsToStorage(currentItems);
+                    // addItemToBoard(itemData.name, itemData.link, itemData.imageUrl, itemData.description, itemData.id, itemData.adder); // UI update by listener
+                    // currentItems.push(itemData); // No local array to push to
+                    saveItemToFirebase(itemData); // Save new item to Firebase
                 }
                 
-                closeModal(); 
+                closeModal();
             });
         } else {
             console.error('Add item form not found!');
@@ -244,13 +289,18 @@ document.addEventListener('DOMContentLoaded', () => {
                          deleteItem(itemId);
                     }
                 } else if (target.classList.contains('edit-item-btn')) {
-                    const currentItems = getItemsFromStorage();
-                    const itemToEdit = currentItems.find(item => item.id === itemId);
-                    if (itemToEdit) {
-                        openModalForEdit(itemToEdit);
-                    } else {
-                        console.error('Item to edit not found');
-                    }
+                    itemsRef.child(itemId).once('value', (snapshot) => {
+                        const itemToEdit = snapshot.val();
+                        if (itemToEdit) {
+                            openModalForEdit(itemToEdit);
+                        } else {
+                            console.error('Item to edit not found in Firebase, ID:', itemId);
+                            alert('Sorry, couldn\'t find that item to edit.');
+                        }
+                    }, (errorObject) => {
+                        console.error("Firebase read failed for edit: " + errorObject.name);
+                        alert('Error fetching item details for editing.');
+                    });
                 }
             });
         } else {
@@ -262,50 +312,23 @@ document.addEventListener('DOMContentLoaded', () => {
         function deleteItem(idToDelete) {
             console.log('[Delete] Attempting to delete item with ID (from DOM):', idToDelete, `(Type: ${typeof idToDelete})`);
             
-            const itemToRemove = board.querySelector(`.board-item[data-id="${idToDelete}"]`);
-            if (itemToRemove) {
-                itemToRemove.remove();
-                console.log('[Delete] Removed item from DOM.');
-            } else {
-                console.warn('[Delete] Could not find item in DOM to remove with ID:', idToDelete);
-            }
+            // const itemToRemove = board.querySelector(`.board-item[data-id="${idToDelete}"]`); // UI update by listener
+            // if (itemToRemove) {
+            //     itemToRemove.remove();
+            //     console.log('[Delete] Removed item from DOM.');
+            // } else {
+            //     console.warn('[Delete] Could not find item in DOM to remove with ID:', idToDelete);
+            // }
 
-            let currentItems = getItemsFromStorage();
-            console.log('[Delete] Items currently in localStorage (before filter):', JSON.parse(JSON.stringify(currentItems)));
-            console.log('[Delete] Listing IDs from localStorage items:');
-            currentItems.forEach((item, idx) => {
-                if (item && typeof item === 'object') {
-                    console.log(`  Storage Item ${idx} - ID: ${item.id} (Type: ${typeof item.id}), Name: ${item.name || 'N/A'}`);
-                } else {
-                    console.log(`  Storage Item ${idx} is not a valid object:`, item);
-                }
-            });
+            deleteItemFromFirebase(idToDelete); // Delete from Firebase
 
-            const initialCount = currentItems.length;
-            const idToDeleteString = String(idToDelete); 
+            // let currentItems = getItemsFromStorage(); // Replaced
+            // ... (rest of the old localStorage delete logic is removed) ...
+            // saveItemsToStorage(currentItems);
 
-            currentItems = currentItems.filter(item => {
-                const itemIDString = item && item.id ? String(item.id) : null;
-                if (itemIDString === null) {
-                    console.warn('[Delete Filter] Item in storage is missing an ID:', item);
-                    return true; 
-                }
-                return itemIDString !== idToDeleteString;
-            });
-            const finalCount = currentItems.length;
-
-            if (initialCount === finalCount) {
-                console.warn('[Delete] Filter did NOT remove item. ID:', idToDeleteString, 'was likely not found or matched in localStorage items.');
-            } else {
-                console.log('[Delete] Filter successfully removed item from array. ID:', idToDeleteString);
-            }
-
-            saveItemsToStorage(currentItems);
-            console.log('[Delete] Items in localStorage (after filter and save):', JSON.parse(JSON.stringify(getItemsFromStorage())));
-
-            if (currentItems.length === 0 && !board.querySelector('#board-placeholder')) {
-                 board.innerHTML = '<p id="board-placeholder" style="text-align: center; width: 100%; grid-column: 1 / -1; color: #777;">Your vision board is empty. Click the + button to add items!</p>';
-            }
+            // if (currentItems.length === 0 && !board.querySelector('#board-placeholder')) { // Placeholder logic needs adjustment
+            //      board.innerHTML = '<p id="board-placeholder" style="text-align: center; width: 100%; grid-column: 1 / -1; color: #777;">Your vision board is empty. Click the + button to add items!</p>';
+            // }
         }
         // --- End Function to Delete Item ---
 
@@ -433,56 +456,57 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // --- End Function to Update Item Element ---
 
-        // --- Load initial items --- 
+        // --- Load initial items ---
         function loadInitialItems() {
-            if (!board) { console.error("Board element not found during init!"); return; } // Guard
-            board.innerHTML = ''; 
+            if (!board) { console.error("Board element not found during init!"); return; }
+            board.innerHTML = ''; // Clear the board for Firebase items
+
+            itemsRef.on('value', (snapshot) => {
+                board.innerHTML = ''; // Clear board before repopulating
+                const items = snapshot.val();
+                console.log('[Firebase] Data received:', items);
+
+                if (items) {
+                    Object.values(items).forEach(item => {
+                        if (item && typeof item === 'object' && item.name && item.id) {
+                            addItemToBoard(
+                                item.name,
+                                item.link || '',
+                                item.imageUrl || '',
+                                item.description || '',
+                                item.id,
+                                item.adder
+                            );
+                        } else {
+                            console.warn('[Firebase Display] Skipping invalid item structure:', item);
+                        }
+                    });
+                }
+                
+                if (!board.hasChildNodes() || (items && Object.keys(items).length === 0)) {
+                    if (!board.querySelector('#board-placeholder')) {
+                        board.innerHTML = '<p id="board-placeholder" style="text-align: center; width: 100%; grid-column: 1 / -1; color: #777;">Your vision board is empty. Click the + button to add items!</p>';
+                    }
+                } else {
+                    const placeholder = board.querySelector('#board-placeholder');
+                    if (placeholder) {
+                        placeholder.remove();
+                    }
+                }
+            }, (errorObject) => {
+                console.error("The read failed: " + errorObject.name);
+                board.innerHTML = '<p style="color:red; text-align:center;">Error loading items from database.</p>';
+            });
+            
+            // Old localStorage loading logic removed
+            /*
             let items = getItemsFromStorage();
-            let needsSave = false; 
+            let needsSave = false;
 
-            console.log('[Before Migration] Items from localStorage:', JSON.parse(JSON.stringify(items))); 
+            console.log('[Before Migration] Items from localStorage:', JSON.parse(JSON.stringify(items)));
 
-            // --- Migration & Cleanup --- 
-            const validItems = items.filter(item => {
-                if (item && typeof item === 'object' && Object.keys(item).length > 1) {
-                    return true;
-                }
-                console.warn('[Migration] Removing invalid item:', item);
-                needsSave = true; 
-                return false;
-            });
-
-            const migratedItems = validItems.map((item, index) => {
-                if (typeof item === 'object' && item !== null && (!item.id || String(item.id).trim() === '')) {
-                    item.id = 'migrated-' + Date.now().toString() + '-' + index; 
-                    needsSave = true; 
-                    console.log(`[Migration] Assigned ID ${item.id} to item:`, item.name);
-                }
-                if (typeof item === 'object' && item !== null && !item.adder) {
-                    item.adder = 'big'; 
-                    needsSave = true;
-                    console.log(`[Migration] Assigned default adder 'big' to item:`, item.name);
-                }
-                if (typeof item === 'object' && item !== null && item.adder === 'ajay') {
-                    item.adder = 'big';
-                    needsSave = true;
-                    console.log(`[Migration] Changed adder from 'ajay' to 'big' for item:`, item.name);
-                }
-                if (typeof item === 'object' && item !== null && item.adder === 'gf') {
-                    item.adder = 'lil';
-                    needsSave = true;
-                    console.log(`[Migration] Changed adder from 'gf' to 'lil' for item:`, item.name);
-                }
-                return item;
-            });
-
-            if (needsSave) {
-                console.log('[Migration] Saving updated items to localStorage:', JSON.parse(JSON.stringify(migratedItems)));
-                saveItemsToStorage(migratedItems);
-                items = migratedItems; 
-            } else {
-                items = migratedItems; 
-            }
+            // --- Migration & Cleanup ---
+            // ... (migration logic removed as it was for localStorage) ...
             // ---------------------------------------------
 
             console.log('[After Migration] Items to be displayed:', JSON.parse(JSON.stringify(items)));
@@ -498,16 +522,25 @@ document.addEventListener('DOMContentLoaded', () => {
                             item.imageUrl || '',
                             item.description || '',
                             item.id,
-                            item.adder 
+                            item.adder
                         );
                     } else {
                         console.warn('[Display] Skipping invalid item structure:', item);
                     }
                 });
             }
+            */
         }
         // --- End Load Initial Items ---
         
+        // --- Firebase Listeners for real-time updates ---
+        // The 'value' listener in loadInitialItems already handles add, update, delete by re-rendering.
+        // For more granular control, you could use:
+        // itemsRef.on('child_added', snapshot => { ... addItemToBoard(snapshot.val()) ... });
+        // itemsRef.on('child_changed', snapshot => { ... updateItemInBoard(snapshot.val()) ... });
+        // itemsRef.on('child_removed', snapshot => { ... removeItemFromBoard(snapshot.key) ... });
+        // However, for simplicity and robustness with current structure, 'value' listener is often sufficient.
+
         loadInitialItems(); // Load items when the app logic initializes
 
     } // --- End initializeAppLogic ---
