@@ -485,12 +485,41 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Combined Board Click Listener (for actions AND stack selection) ---
         if (board) {
             board.addEventListener('click', (event) => {
-                const itemDiv = event.target.closest('.board-item');
+                const itemDiv = event.target.closest('.board-item'); // This can be a card or a stack representative
                 const target = event.target;
 
+                console.log('Board click detected. Target:', target, 'Found itemDiv:', itemDiv);
+                if (itemDiv) {
+                    console.log('itemDiv classes:', itemDiv.classList);
+                    console.log('itemDiv dataset:', itemDiv.dataset);
+                }
+
+                // Priority 1: Check if a stack representative was clicked (for expansion)
+                if (itemDiv && itemDiv.classList.contains('stack-representative') && !target.closest('.item-actions')) {
+                    // Ensure not in stack creation mode OR ensure click is not on an action button within stack rep if they ever get added
+                    if (isStackCreationMode) {
+                        // If we are in stack creation mode, clicking a stack rep should probably do nothing or give a message.
+                        // For now, let's prevent expansion and let selection logic (if any for reps) be handled elsewhere or not at all.
+                        console.log('Clicked on stack representative while in stack CREATION mode. No expansion.');
+                        // Potentially, if we wanted to select a whole stack for another operation, this is where it would go.
+                        // However, current stack creation is about selecting individual items.
+                        return; 
+                    }
+                    console.log('Stack representative clicked for expansion:', itemDiv);
+                    const stackIdToExpand = itemDiv.dataset.stackId;
+                    const stackName = itemDiv.querySelector('.item-content h2').textContent;
+                    console.log(`Attempting to expand stack. ID: ${stackIdToExpand}, Name: ${stackName}`);
+                    if (stackIdToExpand) {
+                        showStackExpansionView(stackIdToExpand, stackName);
+                    }
+                    return; // Handled stack expansion, stop further processing for this click
+                }
+
+                // Priority 2: Handle card selection if in stack creation mode (for unstacked items)
                 if (isStackCreationMode) {
-                    if (itemDiv && itemDiv.dataset.id && !target.closest('.item-actions')) {
-                        // In stack creation mode & clicked on a card body (not an action button within it)
+                    // This logic is for selecting individual .board-item cards (not stack-representatives) to add to a NEW stack.
+                    if (itemDiv && itemDiv.dataset.id && !itemDiv.classList.contains('stack-representative') && !target.closest('.item-actions')) {
+                        console.log('Card clicked in stack CREATION mode for selection:', itemDiv);
                         const itemId = itemDiv.dataset.id;
                         if (itemDiv.classList.contains('stacked-item') && !selectedCardsForStack.includes(itemId)) {
                             alert('This item is already part of another stack and cannot be added to a new one unless unstacked first.');
@@ -505,48 +534,52 @@ document.addEventListener('DOMContentLoaded', () => {
                             itemDiv.classList.add('selected-for-stack');
                         }
                         console.log('Selected cards for stack:', selectedCardsForStack);
-                        return; // Handled stack selection, stop further processing for this click
+                        return; // Handled card selection for new stack, stop further processing
                     }
-                    // If in stack creation mode and click was on an action button, it will be handled below if it's a stack-action-btn.
-                    // Or if it was on edit/delete, those sections will now correctly check isStackCreationMode.
+                    // If in stack creation mode and click was on an action button (like stack-action-btn on a card), it will be handled below.
                 }
 
-                // Regular click processing (not in stack selection mode, or on an action button during stack mode)
-                if (!itemDiv || !itemDiv.dataset.id) return;
-                const itemId = itemDiv.dataset.id;
-                const itemStackId = itemDiv.dataset.stackId || null;
+                // Priority 3: Handle action buttons on cards (edit, delete, stack/unstack actions on individual cards)
+                if (!itemDiv || (!itemDiv.dataset.id && !itemDiv.dataset.stackId) ) { // Ensure itemDiv is something actionable
+                    console.log('No actionable itemDiv found or itemDiv has no ID/stackID for action buttons. Target:', target);
+                    return;
+                }
+                
+                const itemId = itemDiv.dataset.id; // This is for individual cards
+                const itemStackId = itemDiv.dataset.stackId; // This can be on individual cards OR stack reps
 
                 if (target.classList.contains('delete-item-btn')) {
+                    if (!itemId) { console.warn('Delete button clicked on non-item?'); return; }
                     if (isStackCreationMode) return; 
                     if (confirm('Are you sure you want to delete this item?')) {
                         deleteItem(itemId);
                     }
                 } else if (target.classList.contains('edit-item-btn')) {
+                    if (!itemId) { console.warn('Edit button clicked on non-item?'); return; }
                     if (isStackCreationMode) return; 
-                    openModalForEditWithFirebase(itemId); // Renamed for clarity
+                    openModalForEditWithFirebase(itemId);
                 } else if (target.classList.contains('stack-action-btn')) {
-                    if (itemStackId) { // "Unstack" button clicked
+                    if (!itemId) { console.warn('Stack action button clicked on non-item?'); return; }
+                    // This is the stack/unstack button on an INDIVIDUAL card
+                    const cardActualStackId = itemDiv.classList.contains('stacked-item') ? itemStackId : null;
+
+                    if (cardActualStackId) { // "Unstack" button clicked on an individual card
                         if (isStackCreationMode) {
                             alert("Please finish or cancel the current stack creation before unstacking items.");
                             return;
                         }
                         if (confirm(`Are you sure you want to remove "${itemDiv.querySelector('h2').textContent}" from its stack?`)) {
-                            removeItemFromStackFirebase(itemId, itemStackId)
+                            removeItemFromStackFirebase(itemId, cardActualStackId)
                                 .then(() => alert('Item removed from stack.'))
                                 .catch(() => alert('Failed to remove item from stack.'));
                         }
-                    } else { // "Add to Stack / Create Stack" button clicked
+                    } else { // "Add to Stack / Create Stack" button clicked on an individual card
                         if (!isStackCreationMode) {
                             enterStackCreationMode();
                         }
-                        // Toggle selection for the current card
                         const index = selectedCardsForStack.indexOf(itemId);
-                        if (index > -1) { // Already selected (e.g. by clicking card body first, then stack icon)
-                            // Optional: could unselect, or do nothing as it's already selected
-                            // For simplicity, let's assume if you click stack icon on selected card, it remains selected.
-                            // If it was NOT selected, it gets added.
-                        } else {
-                            if (itemDiv.classList.contains('stacked-item')) {
+                        if (index === -1) {
+                             if (itemDiv.classList.contains('stacked-item')) { // Should not happen if cardActualStackId was null
                                 alert('This item is already part of another stack.');
                                 return;
                             }
@@ -599,8 +632,151 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // --- End Function to Delete Item ---
 
-        // --- Function to Create/Add Item Element to Board (ensure it includes the stack button logic) ---
-        function addItemToBoard(name, link, imageUrl, description, id, adder, stackId) { 
+        // --- Function to Add Stack Representative to Board ---
+        function addStackRepresentativeToBoard(stackData, itemsInStack) {
+            if (!board || !stackData || !itemsInStack || itemsInStack.length === 0) {
+                console.warn('Cannot add stack representative, missing data:', { stackData, itemsInStack });
+                return;
+            }
+
+            const stackRepDiv = document.createElement('div');
+            stackRepDiv.classList.add('board-item', 'stack-representative'); // General card style + specific stack style
+            stackRepDiv.dataset.stackId = stackData.id;
+
+            // Use the stack's name
+            const nameElement = document.createElement('h2');
+            nameElement.textContent = stackData.name || 'Unnamed Stack';
+            
+            // Image area - for now, use first item's image or a placeholder icon
+            // This will be replaced by the composite image logic later
+            const imageContainer = document.createElement('div');
+            imageContainer.classList.add('stack-image-area');
+
+            let representativeImageUrl = '';
+            if (itemsInStack[0] && itemsInStack[0].imageUrl) {
+                representativeImageUrl = itemsInStack[0].imageUrl;
+            }
+
+            if (representativeImageUrl) {
+                const imgElement = document.createElement('img');
+                imgElement.src = representativeImageUrl;
+                imgElement.alt = stackData.name || 'Stack image';
+                imgElement.classList.add('product-image'); // Reuse for now, might need specific stack rep image styling
+                imgElement.onerror = () => { 
+                    imgElement.style.display = 'none'; 
+                    const placeholderIcon = document.createElement('div');
+                    placeholderIcon.innerHTML = '&#128440;'; // Layers icon as placeholder
+                    placeholderIcon.classList.add('stack-image-placeholder');
+                    imageContainer.appendChild(placeholderIcon);
+                };
+                imageContainer.appendChild(imgElement);
+            } else {
+                const placeholderIcon = document.createElement('div');
+                placeholderIcon.innerHTML = '&#128440;'; // Layers icon
+                placeholderIcon.classList.add('stack-image-placeholder');
+                imageContainer.appendChild(placeholderIcon);
+            }
+            stackRepDiv.appendChild(imageContainer);
+
+            // Content container for the name (and potentially other stack info)
+            const contentContainer = document.createElement('div');
+            contentContainer.classList.add('item-content'); // Reuse existing style for text overlay
+            contentContainer.appendChild(nameElement);
+            // Could add item count: e.g. const itemCount = document.createElement('p'); itemCount.textContent = `${itemsInStack.length} items`; contentContainer.appendChild(itemCount);
+            stackRepDiv.appendChild(contentContainer);
+            
+            // Add Edit/Delete for the STACK itself? For now, no actions on the stack rep.
+            // Action buttons for individual items will be in the expanded view.
+
+            // Add to board
+            const placeholder = board.querySelector('#board-placeholder');
+            if (placeholder) {
+                placeholder.remove();
+            }
+            board.appendChild(stackRepDiv);
+        }
+        // --- End Function to Add Stack Representative to Board ---
+
+        // --- Function to Show Stack Expansion View ---
+        function showStackExpansionView(stackId, stackName) {
+            console.log(`showStackExpansionView called. Stack ID: ${stackId}, Stack Name: ${stackName}`);
+            // Create overlay
+            const overlay = document.createElement('div');
+            overlay.id = 'stackExpansionOverlay';
+            overlay.classList.add('stack-expansion-overlay');
+
+            // Create content container
+            const content = document.createElement('div');
+            content.classList.add('stack-expansion-content');
+
+            // Stack name title
+            const title = document.createElement('h2');
+            title.textContent = stackName || 'Stack Details';
+            content.appendChild(title);
+
+            // Container for cards
+            const cardsContainer = document.createElement('div');
+            cardsContainer.classList.add('stack-expansion-cards-container');
+            content.appendChild(cardsContainer);
+
+            // Close button
+            const closeBtn = document.createElement('button');
+            closeBtn.classList.add('close-stack-expansion-btn');
+            closeBtn.innerHTML = '&times;';
+            closeBtn.onclick = () => {
+                overlay.remove();
+                // Re-enable SortableJS on main board if it was disabled
+                if (board.sortableInstance) board.sortableInstance.option("disabled", false);
+            };
+            content.appendChild(closeBtn);
+
+            overlay.appendChild(content);
+            document.body.appendChild(overlay);
+
+            // Disable SortableJS on main board while overlay is open
+            if (board.sortableInstance) board.sortableInstance.option("disabled", true);
+
+            // Fetch and display items for this stack
+            itemsRef.orderByChild('stackId').equalTo(stackId).once('value')
+                .then(snapshot => {
+                    console.log('Firebase data received for stack expansion:', snapshot.val());
+                    const itemsInStack = [];
+                    if (snapshot.exists()) {
+                        snapshot.forEach(childSnapshot => {
+                            itemsInStack.push(childSnapshot.val());
+                        });
+                        // Sort items by their order property if it exists
+                        itemsInStack.sort((a, b) => (a.order || 0) - (b.order || 0));
+
+                        if (itemsInStack.length > 0) {
+                            itemsInStack.forEach(item => {
+                                addItemToBoard(item.name, item.link, item.imageUrl, item.description, item.id, item.adder, item.stackId, cardsContainer);
+                            });
+                        } else {
+                            cardsContainer.innerHTML = '<p>This stack is empty.</p>';
+                        }
+                    } else {
+                        cardsContainer.innerHTML = '<p>No items found for this stack.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching items for stack expansion:', error);
+                    cardsContainer.innerHTML = '<p>Error loading stack items.</p>';
+                });
+        }
+
+        // Helper: Modified addItemToBoard to append to a specific container
+        // This is simpler than making original addItemToBoard too complex
+        /* function addItemToBoardInContainer(container, name, link, imageUrl, description, id, adder, stackId) {
+            const currentBoard = board; // Save original board
+            board = container;         // Temporarily set board to the new container
+            addItemToBoard(name, link, imageUrl, description, id, adder, stackId);
+            board = currentBoard;      // Restore original board
+        } */
+        // --- End Function to Show Stack Expansion View ---
+
+        // --- Function to Create/Add Item Element to Board (Individual Cards) ---
+        function addItemToBoard(name, link, imageUrl, description, id, adder, stackId, parentElement = board) { 
             const itemDiv = document.createElement('div');
             itemDiv.classList.add('board-item');
             itemDiv.dataset.id = id;
@@ -678,94 +854,147 @@ document.addEventListener('DOMContentLoaded', () => {
             itemDiv.appendChild(contentContainer);
             
             const placeholder = board.querySelector('#board-placeholder');
-            if (placeholder) placeholder.remove();
-            board.appendChild(itemDiv);
+            if (placeholder) {
+                placeholder.remove();
+            }
+
+            parentElement.appendChild(itemDiv);
         }
-        // --- End Function to Create/Add Item Element ---
+        // --- End Function to Create/Add Item Element to Board (Individual Cards) ---
 
         // --- Function to Update Item Element in Board ---
         // ... (ensure updateItemInBoard is present) ...
 
-        // --- Load initial items (ensure it passes stackId to addItemToBoard) ---
+        // --- Load initial items ---
         function loadInitialItems() {
             if (!board) { console.error("Board element not found during init!"); return; }
             board.innerHTML = ''; // Clear the board for Firebase items
 
-            itemsRef.on('value', (snapshot) => {
+            // Promise.all to fetch both items and stacks before processing
+            Promise.all([
+                itemsRef.once('value'),
+                stacksRef.once('value')
+            ]).then(([itemsSnapshot, stacksSnapshot]) => {
                 board.innerHTML = ''; // Clear board before repopulating
-                const itemsData = snapshot.val();
-                console.log('[Firebase] Data received:', itemsData);
-
-                if (itemsData) {
-                    const itemsArray = Object.values(itemsData);
-
-                    // Sort items by the 'order' property. Items without an order get a default (e.g., 0 or Date.now()).
-                    itemsArray.sort((a, b) => {
-                        const orderA = a.order === undefined ? Date.now() : a.order;
-                        const orderB = b.order === undefined ? Date.now() : b.order;
-                        return orderA - orderB;
-                    });
-
-                    itemsArray.forEach(item => {
-                        if (item && typeof item === 'object' && item.name && item.id) {
-                            addItemToBoard(
-                                item.name,
-                                item.link || '',
-                                item.imageUrl || '',
-                                item.description || '',
-                                item.id,
-                                item.adder,
-                                item.stackId || null // Pass stackId to addItemToBoard
-                            );
-                        } else {
-                            console.warn('[Firebase Display] Skipping invalid item structure:', item);
-                        }
-                    });
-                }
+                const itemsData = itemsSnapshot.val() || {};
+                const stacksData = stacksSnapshot.val() || {};
                 
-                if (!board.hasChildNodes() || (itemsData && Object.keys(itemsData).length === 0)) {
-                    if (!board.querySelector('#board-placeholder')) {
-                        board.innerHTML = '<p id="board-placeholder" style="text-align: center; width: 100%; grid-column: 1 / -1; color: #777;">Your vision board is empty. Click the + button to add items!</p>';
+                console.log('[Firebase] Items received:', itemsData);
+                console.log('[Firebase] Stacks received:', stacksData);
+
+                const itemsArray = Object.values(itemsData);
+                const unstackedItems = [];
+                const itemsByStackId = {};
+
+                // Separate unstacked items and group stacked items
+                itemsArray.forEach(item => {
+                    if (item && item.id) { // Basic validation
+                        if (item.stackId && stacksData[item.stackId]) {
+                            if (!itemsByStackId[item.stackId]) {
+                                itemsByStackId[item.stackId] = [];
+                            }
+                            itemsByStackId[item.stackId].push(item);
+                        } else {
+                            unstackedItems.push(item);
+                        }
                     }
-                } else {
-                    const placeholder = board.querySelector('#board-placeholder');
-                    if (placeholder) {
-                        placeholder.remove();
+                });
+
+                // Sort unstacked items by order
+                unstackedItems.sort((a, b) => (a.order || 0) - (b.order || 0));
+                unstackedItems.forEach(item => {
+                    if (item && typeof item === 'object' && item.name && item.id) {
+                        addItemToBoard(
+                            item.name,
+                            item.link || '',
+                            item.imageUrl || '',
+                            item.description || '',
+                            item.id,
+                            item.adder,
+                            null // Explicitly null stackId for unstacked items shown individually
+                        );
+                    } else {
+                        console.warn('[Firebase Display] Skipping invalid unstacked item structure:', item);
                     }
-                }
-            }, (errorObject) => {
-                console.error("The read failed: " + errorObject.name);
+                });
+
+                // Render stack representatives
+                Object.keys(itemsByStackId).forEach(stackId => {
+                    const stackItems = itemsByStackId[stackId];
+                    const stackInfo = stacksData[stackId];
+                    if (stackInfo && stackItems.length > 0) {
+                        // Sort items within the stack by their original order, if needed for display later
+                        stackItems.sort((a, b) => (a.order || 0) - (b.order || 0));
+                        addStackRepresentativeToBoard(stackInfo, stackItems);
+                    } else {
+                        // If stackInfo is missing or stack is empty (orphaned items), render them individually
+                        console.warn(`Stack info for ${stackId} missing or stack empty, rendering items individually.`);
+                        stackItems.forEach(item => addItemToBoard(item.name, item.link, item.imageUrl, item.description, item.id, item.adder, null));
+                    }
+                });
+
+                displayPlaceholderIfNeeded();
+                initializeSortable(); // Re-initialize SortableJS
+
+            }).catch(error => {
+                console.error("Firebase read failed for items or stacks: " + error.message);
                 board.innerHTML = '<p style="color:red; text-align:center;">Error loading items from database.</p>';
             });
-            
-            // Initialize SortableJS on the board after items are loaded/re-rendered
+        }
+
+        function displayPlaceholderIfNeeded() {
+            if (!board.hasChildNodes()) {
+                 if (!board.querySelector('#board-placeholder')) {
+                    board.innerHTML = '<p id="board-placeholder" style="text-align: center; width: 100%; grid-column: 1 / -1; color: #777;">Your vision board is empty. Click the + button to add items!</p>';
+                }
+            } else {
+                const placeholder = board.querySelector('#board-placeholder');
+                if (placeholder) {
+                    placeholder.remove();
+                }
+            }
+        }
+        
+        function initializeSortable() {
             if (typeof Sortable !== 'undefined') {
-                new Sortable(board, {
+                if (board.sortableInstance) {
+                    board.sortableInstance.destroy(); // Destroy previous instance if exists
+                }
+                board.sortableInstance = new Sortable(board, {
                     animation: 150,
-                    ghostClass: 'sortable-ghost', // Class name for the dragging item
+                    ghostClass: 'sortable-ghost',
                     onEnd: function (evt) {
                         console.log('Drag ended.');
-                        const items = board.querySelectorAll('.board-item');
+                        const boardChildren = Array.from(board.children);
                         let updates = {};
-                        items.forEach((item, index) => {
-                            const itemId = item.dataset.id;
-                            if (itemId) {
-                                // Update the order property for each item in Firebase
-                                // We collect all updates and send them as a single multi-path update for efficiency
-                                updates[`${itemId}/order`] = index;
-                            } else {
-                                console.warn('Found a board item without a data-id during reorder', item);
+                        let currentOrder = 0;
+
+                        boardChildren.forEach((childElement) => {
+                            if (childElement.classList.contains('board-item') && childElement.dataset.id) {
+                                // Individual card
+                                updates[`visionBoardItems/${childElement.dataset.id}/order`] = currentOrder++;
+                            } else if (childElement.classList.contains('stack-representative') && childElement.dataset.stackId) {
+                                // Stack representative - update order for all items in this stack
+                                // This simple reordering might just reorder the stack rep among other items.
+                                // Finer-grained reordering of stack reps vs items, or items within stacks via drag-drop is more complex.
+                                // For now, treat stack rep as a single item for ordering.
+                                const stackId = childElement.dataset.stackId;
+                                // To properly update order for stacks, we'd need a way to assign an 'order' to the stack itself
+                                // or update all its items to reflect this new position relative to unstacked items.
+                                // For simplicity, we might need a new 'order' field on the stack data itself.
+                                // Let's assume for now, stacks are ordered by their first item, or we need a stack order field.
+                                // This part needs more thought for robust stack reordering.
+                                console.warn('Reordering stacks via drag-and-drop needs a stack-level order property or more complex logic.');
+                                // As a temporary measure, we could update the order of the first item in the stack to reflect the rep's position.
+                                // This isn't perfect if stacks themselves need independent ordering from their items.
                             }
                         });
 
                         if (Object.keys(updates).length > 0) {
-                            itemsRef.update(updates)
+                            database.ref().update(updates)
                                 .then(() => console.log('Order updated in Firebase', updates))
                                 .catch(error => console.error('Error updating order in Firebase:', error));
-                        } else {
-                            console.log('No items with IDs found to update order.');
                         }
-                        // Firebase listener will automatically re-render in the new order.
                     }
                 });
             } else {
