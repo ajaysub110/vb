@@ -80,7 +80,13 @@
             </div>
         </main>
 
-        <button id="addButton" class="fab">+</button>
+        <div id="fabContainer" class="fab-container">
+            <button id="fabCreateStackBtn" class="fab-secondary text-label" style="display: none;" title="Create New Stack">Create Stack</button>
+            <button id="fabAddItemBtn" class="fab-secondary text-label" style="display: none;" title="Add New Item">Add Card</button>
+            <button id="mainFabBtn" class="fab">+</button>
+        </div>
+
+        <button id="doneStackingBtn" class="action-button" style="display: none; position: fixed; bottom: 100px; right: 30px; z-index: 1001;">Done Stacking</button>
 
         <div id="addItemModal" class="modal">
             <div class="modal-content">

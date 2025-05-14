@@ -198,7 +198,8 @@ header h1 {
 
 /* Common styles for action buttons */
 .edit-item-btn,
-.delete-item-btn {
+.delete-item-btn,
+.stack-action-btn {
     background: rgba(0, 0, 0, 0.1);
     color: rgba(0, 0, 0, 0.5); 
     border: none;
@@ -224,6 +225,12 @@ header h1 {
 
 .edit-item-btn:hover {
     background: rgba(0, 128, 0, 0.7); /* Green background on hover */
+    color: white;
+}
+
+/* Hover style for stack/unstack button */
+.stack-action-btn:hover {
+    background: rgba(0, 100, 255, 0.7); /* Blue background on hover */
     color: white;
 }
 
@@ -513,6 +520,156 @@ header h1 {
     opacity: 0.4;
     background-color: #cce5ff; /* Light blue, adjust as needed */
 }
+
+/* FAB Container styles */
+.fab-container {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 1000;
+    width: 60px; /* Set to main FAB width for positioning context */
+}
+
+/* Main FAB when inside the container */
+.fab-container .fab {
+    position: absolute; 
+    bottom: 0;
+    right: 0;
+    z-index: 1; 
+    background-color: #ff6b6b; 
+}
+
+.fab-container .fab:hover {
+    background-color: #ee5253; 
+}
+
+.fab-secondary {
+    position: absolute;
+    /* Horizontal centering: main FAB is 60px wide, its center is 30px from its right edge (container right edge) */
+    /* Align center of secondary FAB with center of main FAB. */
+    /* right: 30px; */ /* OLD: Align to the center-line of the main FAB (container's center) */
+    /* transform: translateX(50%); */ /* OLD: Then shift left by half its own width to center it */
+    right: 0; /* Default for all secondary, overridden for text-labels if needed */
+
+    /* Vertical stacking positions set by ID below */
+    color: white;
+    border: none;
+    border-radius: 50%; /* Default, overridden by .text-label for height */
+    display: flex; /* For text centering within the button itself */
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    margin-bottom: 0; /* Remove margin, positioning is absolute */
+    transition: transform 0.2s ease-out, opacity 0.2s ease-out;
+    opacity: 0;
+    z-index: 2; 
+}
+
+.fab-secondary.visible {
+    opacity: 1;
+}
+
+/* Styles for FABs with text labels (adjusting size and positioning) */
+.fab-secondary.text-label {
+    font-size: 12px; 
+    padding: 0 15px; /* Generous horizontal padding */ 
+    min-width: 90px;  /* Ensure enough width for "Create Stack" */
+    width: auto;    /* Still allow it to be wider if text is very long */
+    height: 36px;   
+    border-radius: 18px; 
+    line-height: 36px; /* For vertical centering if not using flex align-items */
+    white-space: nowrap; /* Prevent text from wrapping */
+    /* For text labels, align their right edge with the main FAB's right edge */
+    right: 0; 
+    /* display: flex; justify-content: center; align-items: center; is inherited for centering text */
+}
+
+/* Specific colors and vertical positions for secondary FABs */
+#fabAddItemBtn {
+    background-color: #6ab04c; /* Green for Add Card */
+    bottom: 70px; /* mainFabHeight(60) + spacing(10) */
+}
+#fabAddItemBtn:hover {
+    background-color: #5a9a3c; 
+}
+
+#fabCreateStackBtn {
+    background-color: #ff9f43; /* Orange for Create Stack */
+    bottom: 116px; /* addItemBtnBottom(70) + addItemBtnHeight(36) + spacing(10) */
+}
+#fabCreateStackBtn:hover {
+    background-color: #e68a2e; 
+}
+
+/* General Action Button style (for Done Stacking) */
+.action-button {
+    padding: 10px 20px;
+    background-color: #ff9f43; /* Orange for Done Stacking */
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+}
+
+.action-button:hover {
+    background-color: #e68a2e; /* Darker Orange for Done Stacking hover */
+}
+
+/* Styling for cards selected for stacking */
+.board-item.selected-for-stack {
+    outline: 3px dashed #ff9f43; /* Orange dashed outline - already orange */
+    box-shadow: 0 0 15px rgba(255, 159, 67, 0.7); /* Orange glow - already orange */
+}
+
+/* Initial styling for items that are part of a stack */
+.board-item.stacked-item {
+    border-left: 5px solid #ff9f43; /* Orange left border for stacked items */
+}
+
+/* Common styles for action buttons on cards (edit, delete, stack-action) */
+.edit-item-btn,
+.delete-item-btn,
+.stack-action-btn { 
+    background: rgba(0, 0, 0, 0.1);
+    color: rgba(0, 0, 0, 0.5); 
+    border: none;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 16px;
+    line-height: 22px; 
+    text-align: center;
+    cursor: pointer;
+    padding: 0; /* Remove default padding */
+    display: flex; /* Use flex to center content */
+    justify-content: center;
+    align-items: center;
+    transition: background-color 0.2s ease-in-out, color 0.2s ease-in-out;
+}
+
+/* Specific hover styles for card action buttons */
+.delete-item-btn:hover {
+    background: rgba(255, 0, 0, 0.7); 
+    color: white; 
+}
+
+.edit-item-btn:hover {
+    background: rgba(0, 128, 0, 0.7); /* Green background on hover - Card related */
+    color: white;
+}
+
+/* Hover style for stack/unstack button on cards */
+.stack-action-btn.add-to-stack-btn:hover,
+.stack-action-btn.unstack-btn:hover { /* Grouping for similar hover */
+    background: rgba(255, 159, 67, 0.7); /* Orange hover for stack actions */
+    color: white;
+}
+
+/* If .unstack-btn base style should be different, we can add it here */
+/* Example: .stack-action-btn.unstack-btn { background-color: some-other-neutral-color; } */
 
 /* Responsive adjustments for header icons on smaller screens */
 @media (max-width: 768px) {
