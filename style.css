@@ -93,24 +93,35 @@ header h1 {
 }
 
 .board-item {
-    background-color: white; 
+    background-color: white;
     border-radius: 8px;
-    padding: 15px; /* Reset padding, remove large top padding */
+    /* padding: 15px; */ /* Padding will be handled by item-content or individually */
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     display: flex;
     flex-direction: column;
-    align-items: center; 
-    text-align: center;
-    position: relative; 
-    transition: background-color 0.3s ease; 
+    /* align-items: center; */ /* Content will be positioned differently */
+    /* text-align: center; */   /* Content will be positioned differently */
+    position: relative;
+    transition: background-color 0.3s ease;
+    overflow: hidden; /* To contain the absolute positioned image */
+    min-height: 250px; /* Ensure a minimum height for cards */
 }
 
-.board-item img {
-    max-width: 100%;
-    height: auto;
-    border-radius: 4px;
-    margin-bottom: 10px;
+/* Specific styling for the main product image on the card */
+.board-item > .product-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 8px; /* Match card radius */
+    z-index: 0; /* Behind other content */
 }
+
+/* General styling for any other images within board-item, if necessary (e.g., icons in text) */
+/* This rule is effectively replaced by more specific ones like .adder-icon and .product-image */
+/* .board-item img { ... } */
 
 .board-item h2 {
     margin-top: 0;
@@ -139,12 +150,13 @@ header h1 {
 
 .item-actions {
     position: absolute;
-    top: 5px;
-    right: 5px;
-    display: flex; /* Arrange buttons in a row */
-    gap: 5px; /* Space between buttons */
-    opacity: 0; /* Hidden by default */
+    top: 10px; /* Adjusted for better spacing */
+    right: 10px; /* Adjusted for better spacing */
+    display: flex;
+    gap: 8px; /* Slightly more space */
+    opacity: 0;
     transition: opacity 0.2s ease-in-out;
+    z-index: 2; /* Ensure above image and content */
 }
 
 .board-item:hover .item-actions {
@@ -185,20 +197,58 @@ header h1 {
 /* Style for the adder icon */
 .adder-icon {
     position: absolute;
-    top: 10px;  
-    left: 10px; 
-    width: 72px; 
-    height: 72px; 
-    border-radius: 50%; 
-    object-fit: cover; 
-    z-index: 2; 
+    top: 10px;
+    left: 10px;
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    object-fit: cover;
+    z-index: 2; /* Ensure it's above the main image and item-content background if any */
 }
 
 /* Container for the actual item content */
 .item-content {
-    padding: 10px 40px 10px 85px; /* Re-add general padding: T R B L. Left padding accounts for icon width + buffer. Right padding accounts for actions. */
-    width: 100%; /* Ensure content takes full width for padding calculations */
-    box-sizing: border-box; /* Include padding in width calculation */
+    padding: 15px; /* Adjust padding as needed */
+    width: 100%;
+    box-sizing: border-box;
+    position: relative; /* To stack above the image */
+    z-index: 1; /* Above the main image, below adder/action icons */
+    display: flex; /* Enable flexbox for vertical alignment */
+    flex-direction: column; /* Stack content vertically */
+    justify-content: flex-end; /* Align content to the bottom */
+    flex-grow: 1; /* Allow it to take available space if board-item uses flex */
+    /* Add a subtle background for text readability */
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent black background */
+    /* color: white; */ /* Text color is handled by specific rules below now */
+    border-radius: 0 0 8px 8px; /* Optional: if content is at the bottom and you want rounded corners here too */
+    margin-top: auto; /* Pushes the content to the bottom, making space for top part of image */
+}
+
+.item-content h2,
+.item-content p,
+.item-content a {
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.7);
+    color: white; /* Ensure text is white against the dark overlay */
+    margin-left: 10px; /* Add some left margin for padding from the edge */
+    margin-right: 10px; /* Add some right margin for padding from the edge */
+}
+
+.item-content h2 {
+    margin-bottom: 5px; /* Reduce space below h2 */
+}
+
+.item-content p {
+    margin-bottom: 8px; /* Adjust space for paragraph */
+}
+
+/* Make this selector more specific to ensure it overrides other link colors */
+.board-item .item-content a {
+    color: #90EE90 !important; /* LightGreen, added !important for emphasis */
+    text-decoration: none;
+}
+
+.item-content a:hover {
+    text-decoration: underline;
 }
 
 .fab {

@@ -336,7 +336,21 @@ document.addEventListener('DOMContentLoaded', () => {
         function addItemToBoard(name, link, imageUrl, description, id, adder) { 
             const itemDiv = document.createElement('div');
             itemDiv.classList.add('board-item');
-            itemDiv.dataset.id = id; 
+            itemDiv.dataset.id = id;
+
+            // --- Add Product Image (if exists, as first child for stacking) ---
+            if (imageUrl) {
+                const imgElement = document.createElement('img');
+                imgElement.src = imageUrl;
+                imgElement.alt = name; 
+                imgElement.classList.add('product-image'); // Add class for specific styling
+                imgElement.onerror = () => {
+                    // imgElement.alt = `${name} (Image failed to load)`; // Alt is already set
+                    imgElement.style.display = 'none'; 
+                };
+                itemDiv.appendChild(imgElement);
+            }
+            // ----------------------------------
 
             // --- Add Adder Icon (Top-Left) ---
             if (adder) {
@@ -375,16 +389,8 @@ document.addEventListener('DOMContentLoaded', () => {
             nameElement.textContent = name;
             contentContainer.appendChild(nameElement);
 
-            if (imageUrl) {
-                const imgElement = document.createElement('img');
-                imgElement.src = imageUrl;
-                imgElement.alt = name; 
-                imgElement.onerror = () => {
-                    imgElement.alt = `${name} (Image failed to load)`;
-                    imgElement.style.display = 'none'; 
-                };
-                contentContainer.appendChild(imgElement);
-            }
+            // Product image is now a direct child of itemDiv, not here
+            /* if (imageUrl) { ... } */
 
             if (description) {
                 const descElement = document.createElement('p');
@@ -417,27 +423,37 @@ document.addEventListener('DOMContentLoaded', () => {
             const itemDiv = board.querySelector(`.board-item[data-id="${itemData.id}"]`);
             if (!itemDiv) return;
 
-            // Note: We don't need to update the adder class here as it shouldn't change on edit.
+            // --- Update Product Image ---
+            let existingProductImage = itemDiv.querySelector('.product-image');
+            if (existingProductImage) {
+                existingProductImage.remove();
+            }
+            if (itemData.imageUrl) {
+                const imgElement = document.createElement('img');
+                imgElement.src = itemData.imageUrl;
+                imgElement.alt = itemData.name;
+                imgElement.classList.add('product-image');
+                imgElement.onerror = () => {
+                    imgElement.style.display = 'none';
+                };
+                // Add the image as the first child of itemDiv for proper layering
+                itemDiv.insertBefore(imgElement, itemDiv.firstChild);
+            }
+            // ---------------------------
 
+            // Note: We don't need to update the adder class here as it shouldn't change on edit.
             const contentContainer = itemDiv.querySelector('.item-content');
-            if (!contentContainer) return;
+            if (!contentContainer) {
+                // Should not happen if addItemToBoard always creates it, but good guard
+                console.error("Item content container not found for update", itemData.id);
+                return;
+            }
 
             contentContainer.innerHTML = ''; 
 
             const nameElement = document.createElement('h2');
             nameElement.textContent = itemData.name;
             contentContainer.appendChild(nameElement);
-
-            if (itemData.imageUrl) {
-                const imgElement = document.createElement('img');
-                imgElement.src = itemData.imageUrl;
-                imgElement.alt = itemData.name; 
-                imgElement.onerror = () => { 
-                    imgElement.alt = `${itemData.name} (Image failed to load)`;
-                    imgElement.style.display = 'none'; 
-                };
-                contentContainer.appendChild(imgElement);
-            }
 
             if (itemData.description) {
                 const descElement = document.createElement('p');
