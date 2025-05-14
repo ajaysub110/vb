@@ -237,7 +237,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     imageUrl: document.getElementById('itemImage').value,
                     description: document.getElementById('itemDescription').value,
                     id: editingItemId || Date.now().toString(),
-                    adder: editingItemId ? null : currentAdder 
+                    adder: editingItemId ? null : currentAdder, 
+                    order: editingItemId ? null : Date.now() // Add initial order for new items
                 };
 
                 if (!itemData.name) {
@@ -255,6 +256,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         const existingItem = snapshot.val();
                         if (existingItem) {
                             itemData.adder = existingItem.adder; // Preserve original adder
+                            itemData.order = existingItem.order || Date.now(); // Preserve order or set if missing during edit
                             saveItemToFirebase(itemData);
                             // updateItemInBoard(itemData); // UI update will be handled by Firebase listener
                         } else {
@@ -421,7 +423,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- Function to Update Item Element in Board ---
         function updateItemInBoard(itemData) {
             const itemDiv = board.querySelector(`.board-item[data-id="${itemData.id}"]`);
-            if (!itemDiv) return;
+            if (!itemDiv) {
+                console.warn("updateItemInBoard called for an item not in DOM, possibly handled by full re-render from Firebase. ID:", itemData.id);
+                return; // If the main listener re-renders all, this might not be strictly needed or could be removed
+            }
 
             // --- Update Product Image ---
             let existingProductImage = itemDiv.querySelector('.product-image');
@@ -479,11 +484,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
             itemsRef.on('value', (snapshot) => {
                 board.innerHTML = ''; // Clear board before repopulating
-                const items = snapshot.val();
-                console.log('[Firebase] Data received:', items);
+                const itemsData = snapshot.val();
+                console.log('[Firebase] Data received:', itemsData);
 
-                if (items) {
-                    Object.values(items).forEach(item => {
+                if (itemsData) {
+                    const itemsArray = Object.values(itemsData);
+
+                    // Sort items by the 'order' property. Items without an order get a default (e.g., 0 or Date.now()).
+                    itemsArray.sort((a, b) => {
+                        const orderA = a.order === undefined ? Date.now() : a.order;
+                        const orderB = b.order === undefined ? Date.now() : b.order;
+                        return orderA - orderB;
+                    });
+
+                    itemsArray.forEach(item => {
                         if (item && typeof item === 'object' && item.name && item.id) {
                             addItemToBoard(
                                 item.name,
@@ -499,7 +513,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     });
                 }
                 
-                if (!board.hasChildNodes() || (items && Object.keys(items).length === 0)) {
+                if (!board.hasChildNodes() || (itemsData && Object.keys(itemsData).length === 0)) {
                     if (!board.querySelector('#board-placeholder')) {
                         board.innerHTML = '<p id="board-placeholder" style="text-align: center; width: 100%; grid-column: 1 / -1; color: #777;">Your vision board is empty. Click the + button to add items!</p>';
                     }
@@ -514,38 +528,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 board.innerHTML = '<p style="color:red; text-align:center;">Error loading items from database.</p>';
             });
             
-            // Old localStorage loading logic removed
-            /*
-            let items = getItemsFromStorage();
-            let needsSave = false;
+            // Initialize SortableJS on the board after items are loaded/re-rendered
+            if (typeof Sortable !== 'undefined') {
+                new Sortable(board, {
+                    animation: 150,
+                    ghostClass: 'sortable-ghost', // Class name for the dragging item
+                    onEnd: function (evt) {
+                        console.log('Drag ended.');
+                        const items = board.querySelectorAll('.board-item');
+                        let updates = {};
+                        items.forEach((item, index) => {
+                            const itemId = item.dataset.id;
+                            if (itemId) {
+                                // Update the order property for each item in Firebase
+                                // We collect all updates and send them as a single multi-path update for efficiency
+                                updates[`${itemId}/order`] = index;
+                            } else {
+                                console.warn('Found a board item without a data-id during reorder', item);
+                            }
+                        });
 
-            console.log('[Before Migration] Items from localStorage:', JSON.parse(JSON.stringify(items)));
-
-            // --- Migration & Cleanup ---
-            // ... (migration logic removed as it was for localStorage) ...
-            // ---------------------------------------------
-
-            console.log('[After Migration] Items to be displayed:', JSON.parse(JSON.stringify(items)));
-
-            if (items.length === 0) {
-                board.innerHTML = '<p id="board-placeholder" style="text-align: center; width: 100%; grid-column: 1 / -1; color: #777;">Your vision board is empty. Click the + button to add items!</p>';
-            } else {
-                items.forEach(item => {
-                    if (item && typeof item === 'object' && item.name && item.id) {
-                        addItemToBoard(
-                            item.name,
-                            item.link || '',
-                            item.imageUrl || '',
-                            item.description || '',
-                            item.id,
-                            item.adder
-                        );
-                    } else {
-                        console.warn('[Display] Skipping invalid item structure:', item);
+                        if (Object.keys(updates).length > 0) {
+                            itemsRef.update(updates)
+                                .then(() => console.log('Order updated in Firebase', updates))
+                                .catch(error => console.error('Error updating order in Firebase:', error));
+                        } else {
+                            console.log('No items with IDs found to update order.');
+                        }
+                        // Firebase listener will automatically re-render in the new order.
                     }
                 });
+            } else {
+                console.error('SortableJS is not loaded!');
             }
-            */
         }
         // --- End Load Initial Items ---
         

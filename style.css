@@ -473,4 +473,44 @@ header h1 {
 /* Styles for when app is visible */
 #appContent.visible {
     display: block;
+}
+
+/* SortableJS Ghost Class style */
+.sortable-ghost {
+    opacity: 0.4;
+    background-color: #cce5ff; /* Light blue, adjust as needed */
+}
+
+/* Responsive adjustments for header icons on smaller screens */
+@media (max-width: 768px) {
+    .header-icon {
+        display: none; /* Hide all icons by default on smaller screens */
+    }
+
+    header h1 {
+        font-size: 2em; /* Optionally reduce title size slightly */
+        margin: 0 10px; /* Adjust margin if icons are hidden */
+    }
+
+    /* If you want to show a few, smaller icons, you could do this instead:
+    .header-icon {
+        height: 60px; 
+        opacity: 0.7;
+    }
+    .icon-1 { left: 2%; }
+    .icon-2 { display: none; } 
+    .icon-3 { display: none; } 
+    .icon-4 { left: 10%; } 
+    .icon-5 { right: 10%; } 
+    .icon-6 { display: none; } 
+    .icon-7 { display: none; } 
+    .icon-8 { right: 2%; } 
+    */
+}
+
+@media (max-width: 480px) {
+    header h1 {
+        font-size: 1.8em; /* Further reduce title size for very small screens */
+    }
+    /* You could also choose to hide specific icons here if some were shown at 768px */
 } 
