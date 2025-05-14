@@ -28,14 +28,47 @@ header h1 {
     z-index: 10; 
 }
 
-.header-icon {
+/* Styles for the wrapper around each header icon and its pin */
+.header-icon-wrapper {
     position: absolute;
-    height: 100px; /* Increased size from 80px */
-    width: auto;
+    height: 100px; /* Original height of header-icon */
+    width: auto;   /* Let width be determined by image, or set fixed if needed */
     top: 50%;
     transform: translateY(-50%);
-    z-index: 1;
+    z-index: 1;    /* Same as original header-icon z-index */
+    display: flex; /* To help align items if needed, though absolute pin won't be affected */
+    justify-content: center;
+    align-items: center;
+}
+
+.header-icon {
+    /* position: absolute; <-- This is now on the wrapper */
+    height: 100%; /* Fill the wrapper's height */
+    width: auto;
+    /* top: 50%; <-- This is now on the wrapper */
+    /* transform: translateY(-50%); <-- This is now on the wrapper */
+    /* z-index: 1; <-- This is now on the wrapper */
     opacity: 0.9;
+    display: block; /* Ensure it behaves as a block element */
+}
+
+.pin-icon {
+    position: absolute;
+    top: -10px;      /* Adjust to position the pin overlapping the top of the icon */
+    left: 50%;
+    transform: translateX(-50%);
+    width: 25px;     /* Adjust size of the pin as needed */
+    height: auto;
+    z-index: 2;      /* Ensure pin is on top of the header-icon */
+}
+
+/* Flip alternate pin icons */
+.icon-2 .pin-icon,
+.icon-4 .pin-icon,
+.icon-6 .pin-icon,
+.icon-8 .pin-icon {
+    transform: translateX(-50%) scaleX(-1);
+    filter: hue-rotate(58deg) saturate(300%) brightness(180%); /* Nudging hue further towards yellow */
 }
 
 /* User Toggle Buttons */
@@ -190,7 +223,7 @@ header h1 {
 }
 
 .edit-item-btn:hover {
-    background: rgba(0, 100, 255, 0.7); /* Blue background on hover */
+    background: rgba(0, 128, 0, 0.7); /* Green background on hover */
     color: white;
 }
 
@@ -379,7 +412,7 @@ header h1 {
 }
 
 .board-item:not(.item-adder-big):not(.item-adder-lil) .edit-item-btn:hover {
-    background: rgba(0, 100, 255, 0.7); 
+    background: rgba(0, 128, 0, 0.7); /* Green background on hover */
     color: white;
 }
 
@@ -405,7 +438,7 @@ header h1 {
 
 .item-adder-big .edit-item-btn:hover,
 .item-adder-lil .edit-item-btn:hover {
-    background: rgba(0, 100, 255, 0.7); /* Standard blue */
+    background: rgba(0, 128, 0, 0.7); /* Green background on hover */
     color: white;
 }
 
