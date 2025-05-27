@@ -117,9 +117,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const board = document.getElementById('board');
         const userBigBtn = document.getElementById('userBigBtn');
         const userLilBtn = document.getElementById('userLilBtn');
+        const tagFilter = document.getElementById('tagFilter');
+        const exportCsvBtn = document.getElementById('exportCsvBtn');
 
         let editingItemId = null; 
         let currentAdder = 'big';
+        let allItemsData = {}; // Store all items for filtering
+        let allTags = new Set(); // Store all unique tags
 
         // --- START Modal Helper Functions ---
         function openModalForAdd() {
@@ -135,17 +139,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         function openModalForEdit(item) {
+            console.log('openModalForEdit called with item:', item);
+            console.log('Modal element:', modal);
+            console.log('AddItemForm element:', addItemForm);
+            
             editingItemId = item.id;
             if (addItemForm) {
+                console.log('Populating form fields');
                 document.getElementById('itemName').value = item.name;
                 document.getElementById('itemLink').value = item.link || '';
                 document.getElementById('itemImage').value = item.imageUrl || '';
                 document.getElementById('itemDescription').value = item.description || '';
+                document.getElementById('itemTags').value = item.tags ? item.tags.join(', ') : '';
+            } else {
+                console.error('addItemForm not found!');
             }
             if (modal) {
+                console.log('Setting modal content and showing');
                 modal.querySelector('h2').textContent = 'Edit Item';
                 modal.querySelector('button[type="submit"]').textContent = 'Save Changes';
                 modal.classList.add('display');
+                console.log('Modal classes after adding display:', modal.classList);
+            } else {
+                console.error('modal element not found!');
             }
         }
 
@@ -208,6 +224,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             window.addEventListener('click', (event) => {
                 if (modal.classList.contains('display') && !modal.contains(event.target) && event.target !== addItemBtn) {
+                    console.log('Window click detected, closing modal. Target:', event.target);
                     closeModal();
                 }
             });
@@ -221,11 +238,16 @@ document.addEventListener('DOMContentLoaded', () => {
             addItemForm.addEventListener('submit', (event) => {
                 event.preventDefault(); 
 
+                // Process tags
+                const tagsInput = document.getElementById('itemTags').value;
+                const tags = tagsInput ? tagsInput.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0) : [];
+
                 const itemData = {
                     name: document.getElementById('itemName').value,
                     link: document.getElementById('itemLink').value,
                     imageUrl: document.getElementById('itemImage').value,
                     description: document.getElementById('itemDescription').value,
+                    tags: tags,
                     id: editingItemId || Date.now().toString(),
                     adder: editingItemId ? null : currentAdder, 
                     order: editingItemId ? null : Date.now() // Add initial order for new items
@@ -243,6 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (existingItem) {
                             itemData.adder = existingItem.adder; // Preserve original adder
                             itemData.order = existingItem.order || Date.now(); // Preserve order or set if missing
+                            itemData.tags = tags; // Update tags
                             saveItemToFirebase(itemData);
                         } else {
                             console.error('Item to edit not found in Firebase');
@@ -266,27 +289,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 const itemDiv = event.target.closest('.board-item');
                 const target = event.target;
 
+                console.log('Board click detected:', { target, itemDiv });
+
                 if (!itemDiv || !itemDiv.dataset.id) {
+                    console.log('No valid item div found or no ID');
                     return;
                 }
                 
                 const itemId = itemDiv.dataset.id;
+                console.log('Item ID:', itemId);
 
                 if (target.classList.contains('delete-item-btn')) {
+                    console.log('Delete button clicked');
+                    event.stopPropagation(); // Prevent event bubbling
                     if (confirm('Are you sure you want to delete this item?')) {
                         deleteItem(itemId);
                     }
                 } else if (target.classList.contains('edit-item-btn')) {
+                    console.log('Edit button clicked');
+                    event.stopPropagation(); // Prevent event bubbling
                     openModalForEditWithFirebase(itemId);
                 }
             });
+        } else {
+            console.error('Board element not found for click listener');
         }
 
         // Helper function for opening edit modal (fetching data from Firebase)
         function openModalForEditWithFirebase(itemId) {
+            console.log('Opening edit modal for item ID:', itemId);
             itemsRef.child(itemId).once('value', (snapshot) => {
+                console.log('Firebase response for edit:', snapshot.val());
                 const itemToEdit = snapshot.val();
                 if (itemToEdit) {
+                    console.log('Item found, opening modal');
                     openModalForEdit(itemToEdit);
                 } else {
                     console.error('Item to edit not found in Firebase, ID:', itemId);
@@ -306,7 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
         // --- End Function to Delete Item ---
 
         // --- Function to Create/Add Item Element to Board ---
-        function addItemToBoard(name, link, imageUrl, description, id, adder) { 
+        function addItemToBoard(name, link, imageUrl, description, id, adder, tags = []) { 
             const itemDiv = document.createElement('div');
             itemDiv.classList.add('board-item');
             itemDiv.dataset.id = id;
@@ -363,6 +399,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 linkElement.rel = 'noopener noreferrer'; 
                 contentContainer.appendChild(linkElement);
             }
+            
+            // Add tags if they exist
+            if (tags && tags.length > 0) {
+                const tagsContainer = document.createElement('div');
+                tagsContainer.classList.add('item-tags');
+                tags.forEach(tag => {
+                    const tagElement = document.createElement('span');
+                    tagElement.classList.add('tag');
+                    tagElement.textContent = tag;
+                    tagsContainer.appendChild(tagElement);
+                });
+                contentContainer.appendChild(tagsContainer);
+            }
+            
             itemDiv.appendChild(contentContainer);
             
             const placeholder = board.querySelector('#board-placeholder');
@@ -386,12 +436,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const itemsArray = Object.values(itemsData || {});
             
-            // Sort items by order
-            itemsArray.sort((a, b) => (a.order || 0) - (b.order || 0));
+            // Update all tags set and filter dropdown
+            updateTagsFilter(itemsArray);
             
-            itemsArray.forEach(item => {
+            // Get current filter
+            const selectedTag = tagFilter ? tagFilter.value : '';
+            
+            // Filter items by selected tag
+            let filteredItems = itemsArray;
+            if (selectedTag) {
+                filteredItems = itemsArray.filter(item => 
+                    item.tags && item.tags.includes(selectedTag)
+                );
+            }
+            
+            // Sort items by order
+            filteredItems.sort((a, b) => (a.order || 0) - (b.order || 0));
+            
+            filteredItems.forEach(item => {
                 if (item && typeof item === 'object' && item.name && item.id) {
-                    addItemToBoard(item.name, item.link || '', item.imageUrl || '', item.description || '', item.id, item.adder);
+                    addItemToBoard(item.name, item.link || '', item.imageUrl || '', item.description || '', item.id, item.adder, item.tags || []);
                 } else {
                     console.warn('[RenderBoard] Skipping invalid item:', item);
                 }
@@ -402,6 +466,77 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // --- END Render Board Function ---
 
+        // --- Tags and Filter Functions ---
+        function updateTagsFilter(itemsArray) {
+            // Collect all unique tags
+            allTags.clear();
+            itemsArray.forEach(item => {
+                if (item.tags && Array.isArray(item.tags)) {
+                    item.tags.forEach(tag => allTags.add(tag));
+                }
+            });
+
+            // Update filter dropdown
+            if (tagFilter) {
+                const currentValue = tagFilter.value;
+                tagFilter.innerHTML = '<option value="">All tags</option>';
+                
+                Array.from(allTags).sort().forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag;
+                    option.textContent = tag;
+                    tagFilter.appendChild(option);
+                });
+                
+                // Restore previous selection if it still exists
+                if (currentValue && allTags.has(currentValue)) {
+                    tagFilter.value = currentValue;
+                }
+            }
+        }
+
+        // --- CSV Export Function ---
+        function exportToCSV() {
+            const items = Object.values(allItemsData);
+            if (items.length === 0) {
+                alert('No items to export!');
+                return;
+            }
+
+            // CSV headers
+            const headers = ['Name', 'Description', 'Link', 'Tags', 'Added By', 'Date Added'];
+            
+            // Convert items to CSV rows
+            const csvRows = [headers.join(',')];
+            
+            items.forEach(item => {
+                const row = [
+                    `"${(item.name || '').replace(/"/g, '""')}"`, // Escape quotes
+                    `"${(item.description || '').replace(/"/g, '""')}"`,
+                    `"${(item.link || '').replace(/"/g, '""')}"`,
+                    `"${(item.tags || []).join('; ')}"`,
+                    `"${item.adder || ''}"`,
+                    `"${item.order ? new Date(item.order).toLocaleDateString() : ''}"`
+                ];
+                csvRows.push(row.join(','));
+            });
+
+            // Create and download CSV file
+            const csvContent = csvRows.join('\n');
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            
+            if (link.download !== undefined) {
+                const url = URL.createObjectURL(blob);
+                link.setAttribute('href', url);
+                link.setAttribute('download', `vision-board-${new Date().toISOString().split('T')[0]}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+        }
+
         // --- Load initial items & Set up Listeners ---
         function loadInitialItemsAndListen() {
             if (!board) { 
@@ -411,8 +546,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
             itemsRef.on('value', (itemsSnapshot) => {
                 console.log('[Firebase Listener] Items data changed or loaded.');
-                const currentItemsData = itemsSnapshot.val() || {};
-                renderBoard(currentItemsData);
+                allItemsData = itemsSnapshot.val() || {};
+                renderBoard(allItemsData);
             }, (errorObject) => {
                 console.error("[Firebase Listener] Items read failed: " + errorObject.name);
                 board.innerHTML = '<p style="color:red; text-align:center;">Error loading items from database.</p>';
@@ -463,6 +598,17 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 console.error('SortableJS is not loaded!');
             }
+        }
+
+        // --- Event Listeners for Tags and Export ---
+        if (tagFilter) {
+            tagFilter.addEventListener('change', () => {
+                renderBoard(allItemsData);
+            });
+        }
+
+        if (exportCsvBtn) {
+            exportCsvBtn.addEventListener('click', exportToCSV);
         }
 
         loadInitialItemsAndListen();

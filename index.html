@@ -70,14 +70,18 @@
             <button id="userLilBtn" class="user-btn" data-user="lil">Lil</button> 
         </div>
 
-        <main id="board">
-            <!-- Vision board items will be added here -->
-            <div class="board-item">
-                <h2>Example Item</h2>
-                <img src="https://via.placeholder.com/150" alt="Example Image">
-                <p>This is an example description.</p>
-                <a href="#" target="_blank">Link</a>
+        <div class="controls-bar">
+            <div class="filter-controls">
+                <label for="tagFilter">Filter by tag:</label>
+                <select id="tagFilter">
+                    <option value="">All tags</option>
+                </select>
             </div>
+            <button id="exportCsvBtn" class="export-btn">Export to CSV</button>
+        </div>
+
+        <main id="board">
+            <!-- Vision board items will be added here dynamically -->
         </main>
 
         <button id="addItemBtn" class="fab">+</button>
@@ -98,6 +102,9 @@
 
                     <label for="itemDescription">Description (Optional):</label>
                     <textarea id="itemDescription" name="itemDescription"></textarea>
+
+                    <label for="itemTags">Tags (Optional):</label>
+                    <input type="text" id="itemTags" name="itemTags" placeholder="Enter tags separated by commas (e.g., travel, home, career)">
 
                     <button type="submit">Add Item</button>
                 </form>
